@@ -7,7 +7,19 @@ ARG BASE_IMAGE_NAME=ubuntu-fips
 ARG BASE_IMAGE_TAG=22.04
 ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} 
 
-FROM ${ECR_URI} as ubuntu-fips-python
+FROM ${ECR_URI} as ubuntu-fips-python-s6
+# set version labels
+ARG BUILD_DATE
+ARG VERSION
+ARG MODS_VERSION="v3"
+ARG PKG_INST_VERSION="v1"
+ARG LSIOWN_VERSION="v1"
+ARG S6_OVERLAY_VERSION="3.1.6.2"
+ARG S6_OVERLAY_ARCH="x86_64"
+
+LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="civisanalytics"
+
 ENV REL=jammy
 ENV ARCH=amd64
 
@@ -32,18 +44,6 @@ RUN apt-get update && apt-get install -y \
   ln -sf /usr/bin/python3.10 /usr/bin/python && \
   ln -sf /usr/bin/python3.10 /usr/bin/python3
 
-
-FROM ubuntu-fips-python as ubuntu-fips-python-s6-mods
-
-# set version labels
-ARG BUILD_DATE
-ARG VERSION
-ARG MODS_VERSION="v3"
-ARG PKG_INST_VERSION="v1"
-ARG LSIOWN_VERSION="v1"
-ARG S6_OVERLAY_VERSION="3.1.6.2"
-ARG S6_OVERLAY_ARCH="x86_64"
-
 # add s6 overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
@@ -55,11 +55,13 @@ ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLA
 RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz /tmp
 RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
+
+# add mods
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" "/docker-mods"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" "/usr/bin/lsiown"
 
-FROM ubuntu-fips-python-s6-mods as ubuntu-fips-base
+FROM ubuntu-fips-python-s6 as linuxserver-python-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -141,12 +143,6 @@ RUN \
     /var/tmp/* \
     /var/log/*
 
-FROM ubuntu-fips-base as ubuntu-fips-base-python
-
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="civisanalytics"
-
-# add local files
 COPY root/ /
 
 ENTRYPOINT ["/init"]

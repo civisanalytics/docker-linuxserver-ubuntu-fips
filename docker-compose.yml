@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: ubuntu-fips-base-python
+      target: linuxserver-python-base
       platforms:
         - linux/amd64
       args:
