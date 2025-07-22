@@ -1,61 +1,49 @@
 # syntax=docker/dockerfile:1
 
-FROM alpine:3 as rootfs-stage
+FROM gabemendoza1/cloudcode-baseimage-ubuntu-fips:jammy-22.04
 
-# environment
-ENV REL=jammy
-ENV ARCH=amd64
-
-# install packages
-RUN \
-  apk add --no-cache \
-    bash \
-    curl \
-    tzdata \
-    xz
-
-# grab base tarball
-RUN \
-  mkdir /root-out && \
-  curl -o \
-    /rootfs.tar.gz -L \
-    https://partner-images.canonical.com/core/${REL}/current/ubuntu-${REL}-core-cloudimg-${ARCH}-root.tar.gz && \
-  tar xf \
-    /rootfs.tar.gz -C \
-    /root-out && \
-  rm -rf \
-    /root-out/var/log/*
-
-# set version for s6 overlay
-ARG S6_OVERLAY_VERSION="3.1.6.2"
-ARG S6_OVERLAY_ARCH="x86_64"
-
-# add s6 overlay
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-noarch.tar.xz
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz
-
-# add s6 optional symlinks
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
-
-# Runtime stage
-FROM scratch
-COPY --from=rootfs-stage /root-out/ /
+# set version labels
 ARG BUILD_DATE
 ARG VERSION
 ARG MODS_VERSION="v3"
 ARG PKG_INST_VERSION="v1"
 ARG LSIOWN_VERSION="v1"
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="TheLamer"
+ARG S6_OVERLAY_VERSION="3.1.6.2"
+ARG S6_OVERLAY_ARCH="x86_64"
 
-ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" "/docker-mods"
-ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
-ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" "/usr/bin/lsiown"
+LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="civisanalytics"
+
+# add s6 overlay
+RUN \
+  echo "**** add s6 overlay ****" && \
+  curl -o /tmp/s6-overlay-noarch.tar.xz -L \
+    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
+  tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
+  curl -o /tmp/s6-overlay-arch.tar.xz -L \
+    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz" && \
+  tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz && \
+  curl -o /tmp/s6-overlay-symlinks-noarch.tar.xz -L \
+    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz" && \
+  tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz && \
+  curl -o /tmp/s6-overlay-symlinks-arch.tar.xz -L \
+    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz" && \
+  tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz && \
+  rm -rf /tmp/s6-overlay*.tar.xz
+
+# add LinuxServer.io mod scripts
+RUN \
+  echo "**** add LinuxServer.io mod scripts ****" && \
+  curl -o /docker-mods -L \
+    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" && \
+  chmod +x /docker-mods && \
+  mkdir -p /etc/s6-overlay/s6-rc.d/init-mods-package-install && \
+  curl -o /etc/s6-overlay/s6-rc.d/init-mods-package-install/run -L \
+    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" && \
+  chmod +x /etc/s6-overlay/s6-rc.d/init-mods-package-install/run && \
+  curl -o /usr/bin/lsiown -L \
+    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" && \
+  chmod +x /usr/bin/lsiown
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -69,69 +57,20 @@ ENV HOME="/root" \
   VIRTUAL_ENV=/lsiopy \
   PATH="/lsiopy/bin:$PATH"
 
-# copy sources
-COPY sources.list /etc/apt/
-
 RUN \
-  echo "**** Ripped from Ubuntu Docker Logic ****" && \
-  set -xe && \
-  echo '#!/bin/sh' \
-    > /usr/sbin/policy-rc.d && \
-  echo 'exit 101' \
-    >> /usr/sbin/policy-rc.d && \
-  chmod +x \
-    /usr/sbin/policy-rc.d && \
-  dpkg-divert --local --rename --add /sbin/initctl && \
-  cp -a \
-    /usr/sbin/policy-rc.d \
-    /sbin/initctl && \
-  sed -i \
-    's/^exit.*/exit 0/' \
-    /sbin/initctl && \
-  echo 'force-unsafe-io' \
-    > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup && \
-  echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' \
-    > /etc/apt/apt.conf.d/docker-clean && \
-  echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' \
-    >> /etc/apt/apt.conf.d/docker-clean && \
-  echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' \
-    >> /etc/apt/apt.conf.d/docker-clean && \
-  echo 'Acquire::Languages "none";' \
-    > /etc/apt/apt.conf.d/docker-no-languages && \
-  echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' \
-    > /etc/apt/apt.conf.d/docker-gzip-indexes && \
-  echo 'Apt::AutoRemove::SuggestsImportant "false";' \
-    > /etc/apt/apt.conf.d/docker-autoremove-suggests && \
-  mkdir -p /run/systemd && \
-  echo 'docker' \
-    > /run/systemd/container && \
-  echo "**** install apt-utils and locales ****" && \
-  apt-get update && \
-  apt-get upgrade -y && \
-  apt-get install -y \
-    apt-utils \
-    locales && \
-  echo "**** install packages ****" && \
-  apt-get install -y \
-    catatonit \
-    cron \
-    curl \
-    gnupg \
-    jq \
-    netcat \
-    tzdata && \
-  echo "**** generate locale ****" && \
-  locale-gen en_US.UTF-8 && \
-  echo "**** create abc user and make our folders ****" && \
-  useradd -u 911 -U -d /config -s /bin/false abc && \
-  usermod -G users abc && \
+  echo "**** setup LinuxServer.io environment ****" && \
+  echo "**** create abc user and folders (if not exists) ****" && \
+  if ! id abc >/dev/null 2>&1; then \
+    useradd -u 911 -U -d /config -s /bin/false abc && \
+    usermod -G users abc; \
+  fi && \
   mkdir -p \
     /app \
     /config \
     /defaults \
     /lsiopy && \
   echo "**** cleanup ****" && \
-  apt-get autoremove && \
+  apt-get autoremove -y && \
   apt-get clean && \
   rm -rf \
     /tmp/* \
