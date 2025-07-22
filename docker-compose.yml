@@ -1,0 +1,32 @@
+---
+services:
+  ubuntu-fips:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_DATE=${BUILD_DATE:-2025-01-21T00:00:00Z}
+        - VERSION=${VERSION:-jammy-22.04}
+        - S6_OVERLAY_VERSION=${S6_OVERLAY_VERSION:-3.1.6.2}
+        - S6_OVERLAY_ARCH=${S6_OVERLAY_ARCH:-x86_64}
+        - MODS_VERSION=${MODS_VERSION:-v3}
+        - PKG_INST_VERSION=${PKG_INST_VERSION:-v1}
+        - LSIOWN_VERSION=${LSIOWN_VERSION:-v1}
+        - REL=${REL:-jammy}
+        - ARCH=${ARCH:-amd64}
+    image: gabemendoza1/cloudcode-baseimage-ubuntu-fips:${VERSION:-jammy-22.04}
+    container_name: ubuntu-fips-base
+    environment:
+      - PUID=${PUID:-911}
+      - PGID=${PGID:-911}
+      - TZ=${TZ:-Etc/UTC}
+    volumes:
+      - ${CONFIG_PATH:-./config}:/config
+      - ${APP_PATH:-./app}:/app
+    restart: unless-stopped
+    networks:
+      - ubuntu-fips-network
+
+networks:
+  ubuntu-fips-network:
+    driver: bridge
