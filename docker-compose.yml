@@ -1,9 +1,13 @@
 ---
 services:
   ubuntu-fips:
+    image: gabemendoza1/cloudcode-baseimage-ubuntu-fips:${VERSION:-jammy-22.04}
     build:
       context: .
       dockerfile: Dockerfile
+      target: ubuntu-fips-base-python
+      platforms:
+        - linux/amd64
       args:
         - VERSION=${VERSION:-jammy-22.04}
         - S6_OVERLAY_VERSION=${S6_OVERLAY_VERSION:-3.1.6.2}
@@ -13,4 +17,8 @@ services:
         - LSIOWN_VERSION=${LSIOWN_VERSION:-v1}
         - REL=${REL:-jammy}
         - ARCH=${ARCH:-amd64}
-    image: gabemendoza1/cloudcode-baseimage-ubuntu-fips:${VERSION:-jammy-22.04}
+        - ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
+        - ECR_REGION=${ECR_REGION:-us-east-1}
+        - BASE_IMAGE_NAME=${BASE_IMAGE_NAME}
+        - BASE_IMAGE_TAG=${BASE_IMAGE_TAG:-22.04}
+

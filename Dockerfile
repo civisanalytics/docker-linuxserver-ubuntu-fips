@@ -1,6 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM gabemendoza1/cloudcode-baseimage-ubuntu-fips:jammy-22.04
+# ECR and base image configuration
+ARG ECR_ACCOUNT_ID=1234567890123
+ARG ECR_REGION=us-east-999
+ARG BASE_IMAGE_NAME=ubuntu-fips
+ARG BASE_IMAGE_TAG=22.04
+ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} 
+
+FROM ${ECR_URI} as ubuntu-fips-base
 
 # set version labels
 ARG BUILD_DATE
@@ -14,8 +21,14 @@ ARG S6_OVERLAY_ARCH="x86_64"
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
 LABEL maintainer="civisanalytics"
 
-# add s6 overlay
+# install required packages and add s6 overlay
 RUN \
+  echo "**** install required packages ****" && \
+  apt-get update && \
+  apt-get install -y \
+    curl \
+    ca-certificates \
+    xz-utils && \
   echo "**** add s6 overlay ****" && \
   curl -o /tmp/s6-overlay-noarch.tar.xz -L \
     "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
@@ -82,3 +95,24 @@ RUN \
 COPY root/ /
 
 ENTRYPOINT ["/init"]
+
+FROM ubuntu-fips-base as ubuntu-fips-base-python
+
+# Install Python 3.10 and development tools
+RUN apt-get update && apt-get install -y \
+  python3.10 \
+  python3.10-dev \
+  python3.10-venv \
+  python3-pip \
+  build-essential \
+  libpq-dev \
+  git \
+  ca-certificates \
+  openssl \
+  libssl-dev && \
+  rm -rf /var/lib/apt/lists/* && \
+  # Update CA certificates to ensure SSL/TLS works properly
+  update-ca-certificates && \
+  ln -sf /usr/bin/python3.10 /usr/bin/python && \
+  ln -sf /usr/bin/python3.10 /usr/bin/python3 
+
