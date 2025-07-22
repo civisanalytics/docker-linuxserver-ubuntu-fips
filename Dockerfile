@@ -7,7 +7,33 @@ ARG BASE_IMAGE_NAME=ubuntu-fips
 ARG BASE_IMAGE_TAG=22.04
 ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} 
 
-FROM ${ECR_URI} as ubuntu-fips-base
+FROM ${ECR_URI} as ubuntu-fips-python
+ENV REL=jammy
+ENV ARCH=amd64
+
+# Install Python 3.10 and development tools
+RUN apt-get update && apt-get install -y \
+  curl \
+  tzdata \
+  python3.10 \
+  python3.10-dev \
+  python3.10-venv \
+  python3-pip \
+  build-essential \
+  libpq-dev \
+  git \
+  ca-certificates \
+  openssl \
+  xz-utils \
+  libssl-dev && \
+  rm -rf /var/lib/apt/lists/* && \
+  # Update CA certificates to ensure SSL/TLS works properly
+  update-ca-certificates && \
+  ln -sf /usr/bin/python3.10 /usr/bin/python && \
+  ln -sf /usr/bin/python3.10 /usr/bin/python3
+
+
+FROM ubuntu-fips-python as ubuntu-fips-python-s6-mods
 
 # set version labels
 ARG BUILD_DATE
@@ -18,49 +44,26 @@ ARG LSIOWN_VERSION="v1"
 ARG S6_OVERLAY_VERSION="3.1.6.2"
 ARG S6_OVERLAY_ARCH="x86_64"
 
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="civisanalytics"
+# add s6 overlay
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz
 
-# install required packages and add s6 overlay
-RUN \
-  echo "**** install required packages ****" && \
-  apt-get update && \
-  apt-get install -y \
-    curl \
-    ca-certificates \
-    xz-utils && \
-  echo "**** add s6 overlay ****" && \
-  curl -o /tmp/s6-overlay-noarch.tar.xz -L \
-    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" && \
-  tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz && \
-  curl -o /tmp/s6-overlay-arch.tar.xz -L \
-    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz" && \
-  tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz && \
-  curl -o /tmp/s6-overlay-symlinks-noarch.tar.xz -L \
-    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz" && \
-  tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz && \
-  curl -o /tmp/s6-overlay-symlinks-arch.tar.xz -L \
-    "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz" && \
-  tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz && \
-  rm -rf /tmp/s6-overlay*.tar.xz
+# add s6 optional symlinks
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
+ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" "/docker-mods"
+ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
+ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" "/usr/bin/lsiown"
 
-# add LinuxServer.io mod scripts
-RUN \
-  echo "**** add LinuxServer.io mod scripts ****" && \
-  curl -o /docker-mods -L \
-    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" && \
-  chmod +x /docker-mods && \
-  mkdir -p /etc/s6-overlay/s6-rc.d/init-mods-package-install && \
-  curl -o /etc/s6-overlay/s6-rc.d/init-mods-package-install/run -L \
-    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" && \
-  chmod +x /etc/s6-overlay/s6-rc.d/init-mods-package-install/run && \
-  curl -o /usr/bin/lsiown -L \
-    "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" && \
-  chmod +x /usr/bin/lsiown
+FROM ubuntu-fips-python-s6-mods as ubuntu-fips-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
-ENV HOME="/root" \
+ENV HOME="/workspace" \
   LANGUAGE="en_US.UTF-8" \
   LANG="en_US.UTF-8" \
   TERM="xterm" \
@@ -71,19 +74,66 @@ ENV HOME="/root" \
   PATH="/lsiopy/bin:$PATH"
 
 RUN \
-  echo "**** setup LinuxServer.io environment ****" && \
-  echo "**** create abc user and folders (if not exists) ****" && \
-  if ! id abc >/dev/null 2>&1; then \
-    useradd -u 911 -U -d /config -s /bin/false abc && \
-    usermod -G users abc; \
-  fi && \
+  echo "**** Ripped from Ubuntu Docker Logic ****" && \
+  set -xe && \
+  echo '#!/bin/sh' \
+    > /usr/sbin/policy-rc.d && \
+  echo 'exit 101' \
+    >> /usr/sbin/policy-rc.d && \
+  chmod +x \
+    /usr/sbin/policy-rc.d && \
+  dpkg-divert --local --rename --add /sbin/initctl && \
+  cp -a \
+    /usr/sbin/policy-rc.d \
+    /sbin/initctl && \
+  sed -i \
+    's/^exit.*/exit 0/' \
+    /sbin/initctl && \
+  echo 'force-unsafe-io' \
+    > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup && \
+  echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' \
+    > /etc/apt/apt.conf.d/docker-clean && \
+  echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' \
+    >> /etc/apt/apt.conf.d/docker-clean && \
+  echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' \
+    >> /etc/apt/apt.conf.d/docker-clean && \
+  echo 'Acquire::Languages "none";' \
+    > /etc/apt/apt.conf.d/docker-no-languages && \
+  echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' \
+    > /etc/apt/apt.conf.d/docker-gzip-indexes && \
+  echo 'Apt::AutoRemove::SuggestsImportant "false";' \
+    > /etc/apt/apt.conf.d/docker-autoremove-suggests && \
+  mkdir -p /run/systemd && \
+  echo 'docker' \
+    > /run/systemd/container && \
+  echo "**** install apt-utils and locales ****" && \
+  apt-get update && \
+  apt-get upgrade -y && \
+  apt-get install -y \
+    apt-utils \
+    locales && \
+  echo "**** install packages ****" && \
+  apt-get install -y \
+    catatonit \
+    cron \
+    curl \
+    gnupg \
+    jq \
+    netcat \
+    tzdata && \
+  echo "**** generate locale ****" && \
+  locale-gen en_US.UTF-8 && \
+  echo "**** create abc user and make our folders ****" && \
+  useradd -u 911 -U -d /workspace -s /bin/false abc && \
+  usermod -G users abc && \
   mkdir -p \
     /app \
     /config \
     /defaults \
+    /workspace \
     /lsiopy && \
   echo "**** cleanup ****" && \
-  apt-get autoremove -y && \
+  apt-get autoremove && \
   apt-get clean && \
   rm -rf \
     /tmp/* \
@@ -91,28 +141,12 @@ RUN \
     /var/tmp/* \
     /var/log/*
 
+FROM ubuntu-fips-base as ubuntu-fips-base-python
+
+LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="civisanalytics"
+
 # add local files
 COPY root/ /
 
 ENTRYPOINT ["/init"]
-
-FROM ubuntu-fips-base as ubuntu-fips-base-python
-
-# Install Python 3.10 and development tools
-RUN apt-get update && apt-get install -y \
-  python3.10 \
-  python3.10-dev \
-  python3.10-venv \
-  python3-pip \
-  build-essential \
-  libpq-dev \
-  git \
-  ca-certificates \
-  openssl \
-  libssl-dev && \
-  rm -rf /var/lib/apt/lists/* && \
-  # Update CA certificates to ensure SSL/TLS works properly
-  update-ca-certificates && \
-  ln -sf /usr/bin/python3.10 /usr/bin/python && \
-  ln -sf /usr/bin/python3.10 /usr/bin/python3 
-
