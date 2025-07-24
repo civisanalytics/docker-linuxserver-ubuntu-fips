@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-# ECR and base image configuration
-ARG ECR_ACCOUNT_ID=1234567890123
-ARG ECR_REGION=us-east-999
-ARG BASE_IMAGE_NAME=ubuntu-fips
+# ECR and base image configuration - extracted from CodeBuild environment
+ARG ECR_ACCOUNT_ID
+ARG ECR_REGION
+ARG BASE_IMAGE_NAME=civis-ubuntu-fips
 ARG BASE_IMAGE_TAG=22.04
-ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} 
+ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG}
 
 FROM ${ECR_URI} as ubuntu-fips-s6
 # set version labels

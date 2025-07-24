@@ -1,7 +1,6 @@
 ---
 services:
   docker-linux-server-ubuntu-fips:
-    image: gabemendoza1/docker-linuxserver-ubuntu-fips:${VERSION:-jammy-22.04}
     build:
       context: .
       dockerfile: Dockerfile
