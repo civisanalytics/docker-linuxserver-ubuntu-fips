@@ -60,7 +60,7 @@ FROM ubuntu-fips-s6 as linuxserver-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
-ENV HOME="/workspace" \
+ENV HOME="/config" \
   LANGUAGE="en_US.UTF-8" \
   LANG="en_US.UTF-8" \
   TERM="xterm" \
@@ -119,7 +119,7 @@ RUN \
   echo "**** generate locale ****" && \
   locale-gen en_US.UTF-8 && \
   echo "**** create abc user and make our folders ****" && \
-  useradd -u 911 -U -d /workspace -s /bin/false abc && \
+  useradd -u 911 -U -d /config -s /bin/false abc && \
   usermod -G users abc && \
   mkdir -p \
     /app \
