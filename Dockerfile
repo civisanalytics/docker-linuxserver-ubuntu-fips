@@ -8,20 +8,12 @@ ARG BASE_IMAGE_TAG=22.04
 ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG}
 
 FROM ${ECR_URI} as ubuntu-fips-s6
-# set version labels
-ARG BUILD_DATE
-ARG VERSION
-ARG MODS_VERSION="v3"
-ARG PKG_INST_VERSION="v1"
-ARG LSIOWN_VERSION="v1"
-ARG S6_OVERLAY_VERSION="3.1.6.2"
-ARG S6_OVERLAY_ARCH="x86_64"
-
-LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="civisanalytics"
 
 ENV REL=jammy
 ENV ARCH=amd64
+
+ARG S6_OVERLAY_VERSION="3.1.6.2"
+ARG S6_OVERLAY_ARCH="x86_64"
 
 # Install base development tools (no Python)
 RUN apt-get update && apt-get install -y \
@@ -37,7 +29,7 @@ RUN apt-get update && apt-get install -y \
   # Clean up
   rm -rf /var/lib/apt/lists/* && \
   # Update CA certificates to ensure SSL/TLS works properly
-  update-ca-certificates 
+  update-ca-certificates
 
 # add s6 overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
@@ -51,12 +43,20 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz /tmp
 RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
 
-# add mods
+FROM ubuntu-fips-s6 as linuxserver-base
+
+ARG BUILD_DATE
+ARG VERSION
+ARG MODS_VERSION="v3"
+ARG PKG_INST_VERSION="v1"
+ARG LSIOWN_VERSION="v1"
+
+LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="civisanalytics"
+
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" "/docker-mods"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" "/usr/bin/lsiown"
-
-FROM ubuntu-fips-s6 as linuxserver-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -66,7 +66,9 @@ ENV HOME="/root" \
   TERM="xterm" \
   S6_CMD_WAIT_FOR_SERVICES_MAXTIME="0" \
   S6_VERBOSITY=1 \
-  S6_STAGE2_HOOK=/docker-mods
+  S6_STAGE2_HOOK=/docker-mods \
+  VIRTUAL_ENV=/lsiopy \
+  PATH="/lsiopy/bin:$PATH"
 
 RUN \
   echo "**** Ripped from Ubuntu Docker Logic ****" && \
