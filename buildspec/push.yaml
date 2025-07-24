@@ -3,13 +3,13 @@ phases:
   pre_build:
     commands:
       - export DOCKER_BUILDKIT=1
+      - export ECR_ACCOUNT_ID="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f1)"
+      - export ECR_REGION="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f4)"
   build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${FIPS_REPOSITORY_URI}
       - export COMMIT_HASH_SHORT="$(echo $COMMIT_HASH | cut -c 1-7)"
-      - export ECR_ACCOUNT_ID="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f1)"
-      - export ECR_REGION="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f4)"
       - echo Building the Docker image...
       - echo $COMMIT_HASH_SHORT
       - echo $BRANCH_NAME

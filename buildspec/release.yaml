@@ -4,12 +4,12 @@ phases:
   pre_build:
     commands:
       - export DOCKER_BUILDKIT=1
+      - export ECR_ACCOUNT_ID="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f1)"
+      - export ECR_REGION="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f4)"
   build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${FIPS_REPOSITORY_URI}
-      - export ECR_ACCOUNT_ID="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f1)"
-      - export ECR_REGION="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f4)"
       - PATCH_TAG=${TAG_NAME#"v"}
       - MINOR_TAG=${PATCH_TAG%.*}
       - MAJOR_TAG=${MINOR_TAG%.*}
