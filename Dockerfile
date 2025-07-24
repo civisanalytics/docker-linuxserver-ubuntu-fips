@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ECR and base image configuration - extracted from CodeBuild environment
-ARG ECR_ACCOUNT_ID=0123456789012
+ARG ECR_ACCOUNT_ID
 ARG ECR_REGION=us-east-1
 ARG BASE_IMAGE_NAME=civis-ubuntu-fips
 ARG BASE_IMAGE_TAG=22.04

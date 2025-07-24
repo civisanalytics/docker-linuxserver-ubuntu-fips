@@ -1,7 +1,7 @@
 ---
 services:
   docker-linuxserver-ubuntu-fips:
-    image: ${ECR_ACCOUNT_ID:-123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:${IMAGE_TAG:-local}
+    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:${IMAGE_TAG:-local}
     pull_policy: build
     build:
       context: .
@@ -10,7 +10,7 @@ services:
       platforms:
         - linux/amd64
       args:
-        - BUILD_DATE=${BUILD_DATE:-2025-01-21T00:00:00Z}
+        - BUILD_DATE=${BUILD_DATE:-2025-07-01T00:00:00Z}
         - VERSION=${VERSION:-jammy-22.04}
         - S6_OVERLAY_VERSION=${S6_OVERLAY_VERSION:-3.1.6.2}
         - S6_OVERLAY_ARCH=${S6_OVERLAY_ARCH:-x86_64}
@@ -19,4 +19,4 @@ services:
         - LSIOWN_VERSION=${LSIOWN_VERSION:-v1}
         - REL=${REL:-jammy}
         - ARCH=${ARCH:-amd64}
-        - ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
+        - ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID:-0123456789012}
