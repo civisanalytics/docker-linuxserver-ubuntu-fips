@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: linuxserver-python-base
+      target: linuxserver-base
       platforms:
         - linux/amd64
       args:

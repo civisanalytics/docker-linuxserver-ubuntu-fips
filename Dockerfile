@@ -7,7 +7,7 @@ ARG BASE_IMAGE_NAME=ubuntu-fips
 ARG BASE_IMAGE_TAG=22.04
 ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG} 
 
-FROM ${ECR_URI} as ubuntu-fips-python-s6
+FROM ${ECR_URI} as ubuntu-fips-s6
 # set version labels
 ARG BUILD_DATE
 ARG VERSION
@@ -23,14 +23,10 @@ LABEL maintainer="civisanalytics"
 ENV REL=jammy
 ENV ARCH=amd64
 
-# Install Python 3.10 and development tools
+# Install base development tools (no Python)
 RUN apt-get update && apt-get install -y \
   curl \
   tzdata \
-  python3.10 \
-  python3.10-dev \
-  python3.10-venv \
-  python3-pip \
   build-essential \
   libpq-dev \
   git \
@@ -38,11 +34,10 @@ RUN apt-get update && apt-get install -y \
   openssl \
   xz-utils \
   libssl-dev && \
+  # Clean up
   rm -rf /var/lib/apt/lists/* && \
   # Update CA certificates to ensure SSL/TLS works properly
-  update-ca-certificates && \
-  ln -sf /usr/bin/python3.10 /usr/bin/python && \
-  ln -sf /usr/bin/python3.10 /usr/bin/python3
+  update-ca-certificates 
 
 # add s6 overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
@@ -61,7 +56,7 @@ ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-s
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/lsiown.${LSIOWN_VERSION}" "/usr/bin/lsiown"
 
-FROM ubuntu-fips-python-s6 as linuxserver-python-base
+FROM ubuntu-fips-s6 as linuxserver-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -71,9 +66,7 @@ ENV HOME="/workspace" \
   TERM="xterm" \
   S6_CMD_WAIT_FOR_SERVICES_MAXTIME="0" \
   S6_VERBOSITY=1 \
-  S6_STAGE2_HOOK=/docker-mods \
-  VIRTUAL_ENV=/lsiopy \
-  PATH="/lsiopy/bin:$PATH"
+  S6_STAGE2_HOOK=/docker-mods
 
 RUN \
   echo "**** Ripped from Ubuntu Docker Logic ****" && \
@@ -132,8 +125,7 @@ RUN \
     /app \
     /config \
     /defaults \
-    /workspace \
-    /lsiopy && \
+    /workspace && \
   echo "**** cleanup ****" && \
   apt-get autoremove && \
   apt-get clean && \
