@@ -7,8 +7,6 @@ phases:
       - aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${FIPS_REPOSITORY_URI}
       - export ECR_ACCOUNT_ID="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f1)"
       - export ECR_REGION="$(echo $FIPS_REPOSITORY_URI | cut -d'.' -f4)"
-      - echo "ECR Account ID:" $ECR_ACCOUNT_ID
-      - echo "ECR Region:" $ECR_REGION
   build:
     commands:
       - echo Building the Docker image...
