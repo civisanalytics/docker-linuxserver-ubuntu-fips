@@ -18,7 +18,4 @@ services:
         - REL=${REL:-jammy}
         - ARCH=${ARCH:-amd64}
         - ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
-        - ECR_REGION=${ECR_REGION:-us-east-1}
-        - BASE_IMAGE_NAME=${BASE_IMAGE_NAME:-ubuntu-fips}
-        - BASE_IMAGE_TAG=${BASE_IMAGE_TAG:-22.04}
     pull_policy: build
