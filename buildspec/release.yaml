@@ -1,4 +1,3 @@
-
 version: 0.2
 phases:
   pre_build:
@@ -12,7 +11,16 @@ phases:
       - PATCH_TAG=${TAG_NAME#"v"}
       - MINOR_TAG=${PATCH_TAG%.*}
       - MAJOR_TAG=${MINOR_TAG%.*}
-      - docker build --build-arg ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID} -t ${FIPS_REPOSITORY_URI}:${PATCH_TAG} -t ${FIPS_REPOSITORY_URI}:${MINOR_TAG} -t ${FIPS_REPOSITORY_URI}:${MAJOR_TAG} .
+
+      - echo Building the Docker image...
+      - >
+        docker build 
+        --build-arg ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
+        --tag ${FIPS_REPOSITORY_URI}:${PATCH_TAG}
+        --tag ${FIPS_REPOSITORY_URI}:${MINOR_TAG
+        --tag ${FIPS_REPOSITORY_URI}:${MAJOR_TAG}
+        .
+
       - docker image push --all-tags  ${FIPS_REPOSITORY_URI}
   post_build:
     commands:

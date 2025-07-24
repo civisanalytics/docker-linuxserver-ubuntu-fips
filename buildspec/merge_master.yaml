@@ -9,7 +9,12 @@ phases:
   build:
     commands:
       - echo Building the Docker image...
-      - docker build --build-arg ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID} -t ${FIPS_REPOSITORY_URI}:latest .
+      - >
+        docker build
+        --build-arg ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
+        --tag ${FIPS_REPOSITORY_URI}:latest
+        .
+
       - docker image push --all-tags  ${FIPS_REPOSITORY_URI}
   post_build:
     commands:
