@@ -125,6 +125,7 @@ RUN \
     /app \
     /config \
     /defaults \
+    /lsiopy \
     /workspace && \
   echo "**** cleanup ****" && \
   apt-get autoremove && \
@@ -135,6 +136,7 @@ RUN \
     /var/tmp/* \
     /var/log/*
 
+# add local files
 COPY root/ /
 
 ENTRYPOINT ["/init"]
