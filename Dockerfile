@@ -60,7 +60,7 @@ FROM ubuntu-fips-s6 as linuxserver-base
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
-ENV HOME="/config" \
+ENV HOME="/root" \
   LANGUAGE="en_US.UTF-8" \
   LANG="en_US.UTF-8" \
   TERM="xterm" \
