@@ -1,0 +1,22 @@
+---
+services:
+  docker-linuxserver-ubuntu-fips:
+    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:latest
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: linuxserver-base
+      platforms:
+        - linux/amd64
+      args:
+        - BUILD_DATE=${BUILD_DATE:-2025-07-01T00:00:00Z}
+        - VERSION=${VERSION:-jammy-22.04}
+        - S6_OVERLAY_VERSION=${S6_OVERLAY_VERSION:-3.1.6.2}
+        - S6_OVERLAY_ARCH=${S6_OVERLAY_ARCH:-x86_64}
+        - MODS_VERSION=${MODS_VERSION:-v3}
+        - PKG_INST_VERSION=${PKG_INST_VERSION:-v1}
+        - LSIOWN_VERSION=${LSIOWN_VERSION:-v1}
+        - REL=${REL:-jammy}
+        - ARCH=${ARCH:-amd64}
+        - ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID:-0123456789012}

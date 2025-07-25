@@ -1,57 +1,58 @@
 # syntax=docker/dockerfile:1
 
-FROM alpine:3 as rootfs-stage
+# ECR and base image configuration - extracted from CodeBuild environment
+ARG ECR_ACCOUNT_ID
+ARG ECR_REGION=us-east-1
+ARG BASE_IMAGE_NAME=civis-ubuntu-fips
+ARG BASE_IMAGE_TAG=22.04
+ARG ECR_URI=${ECR_ACCOUNT_ID}.dkr.ecr-fips.${ECR_REGION}.amazonaws.com/${BASE_IMAGE_NAME}:${BASE_IMAGE_TAG}
 
-# environment
+FROM ${ECR_URI} as ubuntu-fips-s6
+
 ENV REL=jammy
 ENV ARCH=amd64
 
-# install packages
-RUN \
-  apk add --no-cache \
-    bash \
-    curl \
-    tzdata \
-    xz
-
-# grab base tarball
-RUN \
-  mkdir /root-out && \
-  curl -o \
-    /rootfs.tar.gz -L \
-    https://partner-images.canonical.com/core/${REL}/current/ubuntu-${REL}-core-cloudimg-${ARCH}-root.tar.gz && \
-  tar xf \
-    /rootfs.tar.gz -C \
-    /root-out && \
-  rm -rf \
-    /root-out/var/log/*
-
-# set version for s6 overlay
 ARG S6_OVERLAY_VERSION="3.1.6.2"
 ARG S6_OVERLAY_ARCH="x86_64"
 
+# Install base development tools (no Python)
+RUN apt-get update && apt-get install -y \
+  curl \
+  tzdata \
+  build-essential \
+  libpq-dev \
+  git \
+  ca-certificates \
+  openssl \
+  xz-utils \
+  libssl-dev && \
+  # Clean up
+  rm -rf /var/lib/apt/lists/* && \
+  # Update CA certificates to ensure SSL/TLS works properly
+  update-ca-certificates
+
 # add s6 overlay
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-noarch.tar.xz
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz
+RUN tar -C / -Jxpf /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz
 
 # add s6 optional symlinks
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-noarch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
+RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-noarch.tar.xz
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-symlinks-arch.tar.xz /tmp
-RUN tar -C /root-out -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
+RUN tar -C / -Jxpf /tmp/s6-overlay-symlinks-arch.tar.xz
 
-# Runtime stage
-FROM scratch
-COPY --from=rootfs-stage /root-out/ /
+FROM ubuntu-fips-s6 as linuxserver-base
+
 ARG BUILD_DATE
 ARG VERSION
 ARG MODS_VERSION="v3"
 ARG PKG_INST_VERSION="v1"
 ARG LSIOWN_VERSION="v1"
+
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="TheLamer"
+LABEL maintainer="civisanalytics"
 
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/docker-mods.${MODS_VERSION}" "/docker-mods"
 ADD --chmod=744 "https://raw.githubusercontent.com/linuxserver/docker-mods/mod-scripts/package-install.${PKG_INST_VERSION}" "/etc/s6-overlay/s6-rc.d/init-mods-package-install/run"
@@ -68,9 +69,6 @@ ENV HOME="/root" \
   S6_STAGE2_HOOK=/docker-mods \
   VIRTUAL_ENV=/lsiopy \
   PATH="/lsiopy/bin:$PATH"
-
-# copy sources
-COPY sources.list /etc/apt/
 
 RUN \
   echo "**** Ripped from Ubuntu Docker Logic ****" && \
@@ -129,7 +127,8 @@ RUN \
     /app \
     /config \
     /defaults \
-    /lsiopy && \
+    /lsiopy \
+    /workspace && \
   echo "**** cleanup ****" && \
   apt-get autoremove && \
   apt-get clean && \
