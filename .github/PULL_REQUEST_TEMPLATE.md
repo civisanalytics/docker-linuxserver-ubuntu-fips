@@ -1,15 +1,3 @@
-ver_medium.png)][linuxserverurl]
-
-ut. We do not need a PR -->
-ange for corner case functionality or plugins please look at making a Docker Mod or local script https://blog.linuxserver.io/2019/09/14/customizing-our-containers/ -->
-message -->
--->
-repository, please add your changes there if appropriate -->
-
-TRIBUTING.md) guideline and understand that I have made the correct modifications
-
->
-
 ## Description
 
 Required: Please provide a brief description of what this pull request is trying to accomplish.
