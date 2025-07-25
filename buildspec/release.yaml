@@ -17,7 +17,7 @@ phases:
         docker build 
         --build-arg ECR_ACCOUNT_ID=${ECR_ACCOUNT_ID}
         --tag ${FIPS_REPOSITORY_URI}:${PATCH_TAG}
-        --tag ${FIPS_REPOSITORY_URI}:${MINOR_TAG
+        --tag ${FIPS_REPOSITORY_URI}:${MINOR_TAG}
         --tag ${FIPS_REPOSITORY_URI}:${MAJOR_TAG}
         .
 
