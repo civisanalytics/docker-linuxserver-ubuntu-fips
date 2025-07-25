@@ -1,7 +1,7 @@
 ---
 services:
   docker-linuxserver-ubuntu-fips:
-    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:${IMAGE_TAG:-local}
+    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:latest
     pull_policy: build
     build:
       context: .
