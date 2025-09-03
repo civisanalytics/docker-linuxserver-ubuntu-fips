@@ -1,7 +1,7 @@
 ---
 services:
   docker-linuxserver-ubuntu-fips:
-    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:jammy_latest
+    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:jammy-latest
     build:
       context: .
       dockerfile: Dockerfile
