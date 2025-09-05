@@ -28,5 +28,5 @@ User GID:    $(id -g abc)
 "
 
 lsiown abc:abc /app
-# lsiown abc:abc /config
+lsiown abc:abc /config
 lsiown abc:abc /defaults

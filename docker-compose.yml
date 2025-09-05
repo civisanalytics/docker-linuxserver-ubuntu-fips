@@ -1,7 +1,7 @@
 ---
 services:
   docker-linuxserver-ubuntu-fips:
-    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:latest
+    image: ${ECR_ACCOUNT_ID:-0123456789012}.dkr.ecr-fips.us-east-1.amazonaws.com/docker-linuxserver-ubuntu-fips:jammy-latest
     pull_policy: build
     build:
       context: .
@@ -10,6 +10,8 @@ services:
       platforms:
         - linux/amd64
       args:
+        - PUID=${PUID:-123654}
+        - PGID=${PGID:-123654}
         - BUILD_DATE=${BUILD_DATE:-2025-07-01T00:00:00Z}
         - VERSION=${VERSION:-jammy-22.04}
         - S6_OVERLAY_VERSION=${S6_OVERLAY_VERSION:-3.1.6.2}
